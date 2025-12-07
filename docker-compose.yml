@@ -1,0 +1,133 @@
+services:
+  # MongoDB
+  mongo:
+    image: mongo:7.0
+    container_name: gdash-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: gdash
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - gdash-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ (Comentado - usando CloudAMQP externo)
+  # Descomente se quiser usar RabbitMQ local ao invés do CloudAMQP
+  # rabbitmq:
+  #   image: rabbitmq:3.12-management-alpine
+  #   container_name: gdash-rabbitmq
+  #   restart: unless-stopped
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: admin
+  #     RABBITMQ_DEFAULT_PASS: admin123
+  #   volumes:
+  #     - rabbitmq_data:/var/lib/rabbitmq
+  #   networks:
+  #     - gdash-network
+  #   healthcheck:
+  #     test: rabbitmq-diagnostics -q ping
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # API NestJS
+  api:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    container_name: gdash-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      MONGODB_URI: mongodb://admin:admin123@mongo:27017/gdash?authSource=admin
+      RABBITMQ_URL: amqps://jmukxuie:Yrm6BOu_lcShUP3LWnnYNckWjlFfCxMp@jackal.rmq.cloudamqp.com/jmukxuie
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_EXPIRES_IN: 7d
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - gdash-network
+    volumes:
+      - ./backend/api:/app
+      - /app/node_modules
+
+  # Collector Python
+  collector:
+    build:
+      context: ./backend/collector
+      dockerfile: Dockerfile
+    container_name: gdash-collector
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqps://jmukxuie:Yrm6BOu_lcShUP3LWnnYNckWjlFfCxMp@jackal.rmq.cloudamqp.com/jmukxuie
+      COLLECTION_INTERVAL: 3600  # 1 hora em segundos
+    networks:
+      - gdash-network
+    volumes:
+      - ./backend/collector:/app
+
+  # Worker Go
+  worker:
+    build:
+      context: ./backend/worker
+      dockerfile: Dockerfile
+    container_name: gdash-worker
+    restart: unless-stopped
+    environment:
+      RABBITMQ_URL: amqps://jmukxuie:Yrm6BOu_lcShUP3LWnnYNckWjlFfCxMp@jackal.rmq.cloudamqp.com/jmukxuie
+      API_URL: http://api:3000
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - gdash-network
+    volumes:
+      - ./backend/worker:/app
+    healthcheck:
+      test: ["CMD", "pgrep", "worker"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gdash-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    environment:
+      # This will be used by the entrypoint script to inject into env-config.js at runtime
+      VITE_API_URL: http://localhost:3000
+    depends_on:
+      - api
+    networks:
+      - gdash-network
+
+volumes:
+  mongo_data:
+  # rabbitmq_data:  # Comentado - usando CloudAMQP externo
+
+networks:
+  gdash-network:
+    driver: bridge
+

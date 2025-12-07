@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Python Virtual Environments
+venv/
+env/
+ENV/
+.venv
+
+# Build outputs
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Package manager lock files (keep only npm)
+bun.lockb
+yarn.lock
+pnpm-lock.yaml
+
+# Docker
+.dockerignore
+
+# MongoDB
+data/
+
+# Go
+*.test
+*.out
+
