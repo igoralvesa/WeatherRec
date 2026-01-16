@@ -1,4 +1,4 @@
-# GDash - Sistema de Coleta e Análise de Dados Climáticos
+# Sistema de Coleta e Análise de Dados Climáticos
 
 Aplicação full-stack para coletar, processar, armazenar e exibir dados de clima, além de consumir APIs públicas paginadas e gerar insights sobre os dados coletados.
 
